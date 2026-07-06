@@ -1,12 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit"
 import { Horizon } from "@stellar/stellar-sdk"
-
-const kit = new StellarWalletsKit({
-  selectedNetwork: "TESTNET",
-  modules: [],
-})
 
 const server = new Horizon.Server("https://horizon-testnet.stellar.org")
 
@@ -20,13 +14,19 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
 
   const connect = async () => {
-    await kit.openModal({
-      onWalletSelected: async (option: any) => {
-        kit.setWallet(option.id)
-        const result = await kit.getAddress()
-        setAddress(result.address)
-      },
-    })
+    try {
+      const freighter = await import("@stellar/freighter-api")
+      const { isConnected } = await freighter.isConnected()
+      if (!isConnected) {
+        alert("Please install Freighter wallet extension")
+        return
+      }
+      await freighter.setAllowed()
+      const { address: addr } = await freighter.getAddress()
+      setAddress(addr)
+    } catch (e: any) {
+      alert("Could not connect: " + e.message)
+    }
   }
 
   const disconnect = () => {
@@ -51,6 +51,7 @@ export default function Home() {
     setTxError("")
     try {
       const S = await import("@stellar/stellar-sdk")
+      const freighter = await import("@stellar/freighter-api")
       const account = await server.loadAccount(address)
       const tx = new S.TransactionBuilder(account, {
         fee: S.BASE_FEE,
@@ -63,12 +64,11 @@ export default function Home() {
         }))
         .setTimeout(30)
         .build()
-      const signed = await kit.signTransaction(tx.toXDR(), {
-        address,
+      const { signedTxXdr } = await freighter.signTransaction(tx.toXDR(), {
         networkPassphrase: S.Networks.TESTNET,
       })
       const result = await server.submitTransaction(
-        S.TransactionBuilder.fromXDR(signed.signedTxXdr, S.Networks.TESTNET)
+        S.TransactionBuilder.fromXDR(signedTxXdr, S.Networks.TESTNET)
       )
       setTxHash(result.hash)
     } catch (e: any) {
