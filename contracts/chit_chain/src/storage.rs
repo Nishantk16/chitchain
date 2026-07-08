@@ -125,4 +125,30 @@ pub fn set_winner_queue(env: &Env, queue: &Vec<Address>) {
     env.storage().persistent().set(&key, queue);
     env.storage()
         .persistent()
-        .extend_ttl(&key,
+        .extend_ttl(&key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+}
+
+// ─── Operator Set (persistent) ─────────────────────────────────────────────────
+
+pub fn get_operator_set(env: &Env) -> Vec<Address> {
+    let key = DataKey::OperatorSet;
+    let result = env
+        .storage()
+        .persistent()
+        .get::<DataKey, Vec<Address>>(&key)
+        .unwrap_or_else(|| Vec::new(env));
+    if !result.is_empty() {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+    }
+    result
+}
+
+pub fn set_operator_set(env: &Env, operators: &Vec<Address>) {
+    let key = DataKey::OperatorSet;
+    env.storage().persistent().set(&key, operators);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+}
