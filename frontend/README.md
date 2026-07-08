@@ -1,46 +1,69 @@
 # ChitChain
 
-Trustless Group Savings Circle (ROSCA) on Stellar/Soroban.
+> The world's first trustless group savings protocol built on Stellar/Soroban.
+
+![ChitChain Landing](screenshots/landing.png)
 
 ## Project Description
 
-ChitChain is a decentralized savings application built on Stellar testnet. It allows users to connect their Stellar wallet, view their XLM balance, and send XLM transactions directly from the browser.
+ChitChain is a decentralized savings application built on Stellar testnet. It eliminates fraud and middlemen from traditional chit funds (ROSCA) by putting everything on-chain via Soroban smart contracts.
 
-## Features
-
+**Level 1 features:**
 - Connect/disconnect Freighter wallet
-- Display XLM balance
+- Display XLM balance in real-time
 - Send XLM transactions on Stellar testnet
-- Transaction hash with explorer link
+- Transaction hash with Stellar Explorer link
 - Success/failure feedback
+
+## Live Demo
+
+🌐 **[https://chit-chain.vercel.app](https://chit-chain.vercel.app)**
 
 ## Tech Stack
 
 - Next.js 15 + TypeScript
-- Stellar SDK
-- StellarWalletsKit
 - Tailwind CSS
+- Stellar SDK
+- Freighter API (wallet)
+- Vercel (deployment)
 
 ## Setup Instructions
 
 ### Prerequisites
 - Node.js 20+
-- Freighter wallet browser extension
+- [Freighter wallet](https://freighter.app) browser extension
 
 ### Run Locally
 
-\`\`\`bash
-cd frontend
-npm install
+```bash
+git clone https://github.com/Nishantk16/chitchain
+cd chitchain/frontend
+npm install --ignore-scripts
 npm run dev
-\`\`\`
+```
 
-Open http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000)
 
 ## Screenshots
 
-> Add screenshots after running: wallet connected, balance displayed, transaction sent
+### Landing Page
+![Landing](screenshots/landing.png)
 
-## Live Demo
+### Wallet Connected + Balance
+![Wallet Connected](screenshots/wallet-connected.png)
 
-> Add Vercel URL after deployment
+### Transaction Confirmed
+![Transaction](screenshots/transaction.png)
+
+### Transaction Result
+![Transaction Result](screenshots/tx-result.png)
+
+## Transaction Hash (Testnet)
+
+`69cbabb8291e006e01fac062016b2bd7a19f048fd3cda6ec6729a2ebcf10b654`
+
+[View on Stellar Explorer](https://stellar.expert/explorer/testnet/tx/69cbabb8291e006e01fac062016b2bd7a19f048fd3cda6ec6729a2ebcf10b654)
+
+## GitHub Repository
+
+[https://github.com/Nishantk16/chitchain](https://github.com/Nishantk16/chitchain)
