@@ -2,7 +2,15 @@
 
 > The world's first trustless group savings protocol built on Stellar/Soroban.
 
-ChitChain Landing -- <img width="1877" height="903" alt="image" src="https://github.com/user-attachments/assets/997cac4c-d059-4415-b998-326b9710e0ff" />
+ Screenshots📸
+ 
+ Landing Page -- <img width="1877" height="903" alt="image" src="https://github.com/user-attachments/assets/997cac4c-d059-4415-b998-326b9710e0ff" />
+
+ wallet-connected page -- <img width="1886" height="902" alt="image" src="https://github.com/user-attachments/assets/4ecbc23e-f63c-4579-b653-1a52ffb12c10" />
+
+ Transaction Page -- <img width="947" height="342" alt="image" src="https://github.com/user-attachments/assets/3ac68a2f-3f9b-47fe-a6a6-31c1e2ad29eb" />
+
+
 
 
 ## Project Description
