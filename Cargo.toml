@@ -21,3 +21,5 @@ lto = true
 [profile.release-with-logs]
 inherits = "release"
 debug-assertions = true
+[patch.crates-io]
+ed25519-dalek = "=2.0.0"
