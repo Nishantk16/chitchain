@@ -11,11 +11,16 @@ import { statusCodeToLabel, statusCodeToColor, formatXLM } from "@/lib/utils"
 
 const horizon = new Horizon.Server(STELLAR_CONFIG.horizonUrl)
 
-StellarWalletsKit.init({
-  modules: [new FreighterModule(), new xBullModule(), new AlbedoModule(), new LobstrModule()],
-  selectedWalletId: FREIGHTER_ID,
-  network: Networks.TESTNET,
-})
+let kitInitialized = false
+function ensureKitInit() {
+  if (kitInitialized) return
+  StellarWalletsKit.init({
+    modules: [new FreighterModule(), new xBullModule(), new AlbedoModule(), new LobstrModule()],
+    selectedWalletId: FREIGHTER_ID,
+    network: Networks.TESTNET,
+  })
+  kitInitialized = true
+}
 
 // ── Error categories ────────────────────────────────────────────────────────
 // We surface exactly 3 distinct, user-actionable error types, each with its
@@ -103,6 +108,10 @@ export default function Home() {
   const [appError, setAppError] = useState<AppError | null>(null)
 
   useEffect(() => {
+    ensureKitInit()
+  }, [])
+
+  useEffect(() => {
     const pts = Array.from({length: 60}, () => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
@@ -153,6 +162,7 @@ export default function Home() {
 
   const connect = async () => {
     setAppError(null)
+    ensureKitInit()
     try {
       const { address: addr } = await StellarWalletsKit.authModal()
       setAddress(addr)
