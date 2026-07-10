@@ -1,22 +1,20 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Horizon } from "@stellar/stellar-sdk"
-import {
-  StellarWalletsKit,
-  WalletNetwork,
-  allowAllModules,
-  FREIGHTER_ID,
-  type ISupportedWallet,
-} from "@creit.tech/stellar-wallets-kit"
+import { StellarWalletsKit, Networks } from "@creit.tech/stellar-wallets-kit"
+import { FreighterModule, FREIGHTER_ID } from "@creit.tech/stellar-wallets-kit/modules/freighter"
+import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull"
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo"
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr"
 import { CONTRACT_ADDRESSES, STELLAR_CONFIG, explorerTxUrl } from "@/lib/stellar-config"
 import { statusCodeToLabel, statusCodeToColor, formatXLM } from "@/lib/utils"
 
 const horizon = new Horizon.Server(STELLAR_CONFIG.horizonUrl)
 
-const kit = new StellarWalletsKit({
-  network: WalletNetwork.TESTNET,
+StellarWalletsKit.init({
+  modules: [new FreighterModule(), new xBullModule(), new AlbedoModule(), new LobstrModule()],
   selectedWalletId: FREIGHTER_ID,
-  modules: allowAllModules(),
+  network: Networks.TESTNET,
 })
 
 // ── Error categories ────────────────────────────────────────────────────────
@@ -156,24 +154,15 @@ export default function Home() {
   const connect = async () => {
     setAppError(null)
     try {
-      await kit.openModal({
-        modalTitle: "Connect a Stellar Wallet",
-        onWalletSelected: async (option: ISupportedWallet) => {
-          try {
-            kit.setWallet(option.id)
-            const { address: addr } = await kit.getAddress()
-            setAddress(addr)
-          } catch (e) {
-            setAppError(classifyError(e))
-          }
-        },
-      })
+      const { address: addr } = await StellarWalletsKit.authModal()
+      setAddress(addr)
     } catch (e: any) {
       setAppError(classifyError(e))
     }
   }
 
   const disconnect = () => {
+    StellarWalletsKit.disconnect().catch(() => {})
     setAddress(""); setBalance(""); setTxHash(""); setTxError("")
     setCircleState(null); setCircleTxHash(""); setTxStep("idle"); setAppError(null)
   }
@@ -195,7 +184,7 @@ export default function Home() {
       const tx = new S.TransactionBuilder(account, { fee: S.BASE_FEE, networkPassphrase: S.Networks.TESTNET })
         .addOperation(S.Operation.payment({ destination: toAddress, asset: S.Asset.native(), amount }))
         .setTimeout(30).build()
-      const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), { networkPassphrase: S.Networks.TESTNET, address })
+      const { signedTxXdr } = await StellarWalletsKit.signTransaction(tx.toXDR(), { networkPassphrase: S.Networks.TESTNET, address })
       const result = await horizon.submitTransaction(S.TransactionBuilder.fromXDR(signedTxXdr, S.Networks.TESTNET))
       setTxHash(result.hash)
     } catch (e: any) {
@@ -270,7 +259,7 @@ export default function Home() {
       const prepared = await server.prepareTransaction(tx)
 
       setTxStep("signing")
-      const { signedTxXdr } = await kit.signTransaction(prepared.toXDR(), {
+      const { signedTxXdr } = await StellarWalletsKit.signTransaction(prepared.toXDR(), {
         networkPassphrase: STELLAR_CONFIG.networkPassphrase,
         address,
       })
