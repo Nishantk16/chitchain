@@ -228,8 +228,15 @@ export default function Home() {
       }
       const native: any = S.scValToNative(sim.result.retval)
       if (!native) { setCircleState(null); return }
+
+      const rawStatus = native.status
+      let statusTag: string | undefined
+      if (Array.isArray(rawStatus)) statusTag = rawStatus[0]
+      else if (rawStatus?.tag) statusTag = rawStatus.tag
+      else if (typeof rawStatus === "string") statusTag = rawStatus
+
       setCircleState({
-        status: Number(native.status?.tag !== undefined ? statusTagToCode(native.status.tag) : native.status ?? 0),
+        status: statusTag !== undefined ? statusTagToCode(statusTag) : 0,
         member_count: Number(native.member_count ?? 0),
         max_members: Number(native.config?.max_members ?? 0),
         total_rounds: Number(native.config?.total_rounds ?? 0),
