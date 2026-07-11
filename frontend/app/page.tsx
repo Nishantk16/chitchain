@@ -6,8 +6,8 @@ import { FreighterModule, FREIGHTER_ID } from "@creit.tech/stellar-wallets-kit/m
 import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull"
 import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo"
 import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr"
-import { CONTRACT_ADDRESSES, STELLAR_CONFIG, explorerTxUrl } from "@/lib/stellar-config"
-import { statusCodeToLabel, statusCodeToColor, formatXLM } from "@/lib/utils"
+import { CONTRACT_ADDRESSES, STELLAR_CONFIG, EVENT_POLL_INTERVAL_MS, explorerTxUrl } from "@/lib/stellar-config"
+import { statusCodeToLabel, statusCodeToColor, formatXLM, eventLabel, eventDotColor, formatRelativeTime, truncateHash } from "@/lib/utils"
 
 const horizon = new Horizon.Server(STELLAR_CONFIG.horizonUrl)
 
@@ -73,6 +73,15 @@ const STEP_LABELS: Record<TxStep, string> = {
   failed: "Failed",
 }
 
+interface LiveEvent {
+  id: string
+  type: string
+  ledger: number
+  txHash: string
+  timestamp: number
+  data: unknown
+}
+
 interface CircleState {
   status: number
   member_count: number
@@ -106,6 +115,11 @@ export default function Home() {
   const [txStep, setTxStep] = useState<TxStep>("idle")
   const [circleTxHash, setCircleTxHash] = useState("")
   const [appError, setAppError] = useState<AppError | null>(null)
+  const [eventLog, setEventLog] = useState<LiveEvent[]>([])
+  const [eventsLive, setEventsLive] = useState(false)
+  const [nowTick, setNowTick] = useState(0)
+  const lastLedgerRef = useRef<number | null>(null)
+  const pollingRef = useRef(false)
 
   useEffect(() => {
     ensureKitInit()
@@ -255,6 +269,96 @@ export default function Home() {
   useEffect(() => {
     if (address) loadCircleState()
   }, [address, loadCircleState])
+
+  // ── Real-time event streaming ───────────────────────────────────────────
+  // Polls Soroban RPC's getEvents for the chit_chain contract on a fixed
+  // interval, decodes new events since the last cursor, and appends them to
+  // a live activity feed. Any state-changing event also triggers an
+  // authoritative circle-state refresh so the UI stays in sync without the
+  // user manually hitting "Refresh". Runs as soon as the contract address is
+  // configured — no wallet connection required, since reading events is a
+  // public, unauthenticated RPC call.
+  const pollEvents = useCallback(async () => {
+    if (!CONTRACT_ADDRESSES.chitChain || pollingRef.current) return
+    pollingRef.current = true
+    try {
+      const S = await import("@stellar/stellar-sdk")
+      const server = new S.rpc.Server(STELLAR_CONFIG.rpcUrl)
+
+      let startLedger = lastLedgerRef.current
+      if (!startLedger) {
+        const latest = await server.getLatestLedger()
+        // First poll: look back ~100 ledgers (~8 min on testnet) so recent
+        // activity shows up immediately instead of waiting for new events.
+        startLedger = Math.max(latest.sequence - 100, 1)
+      }
+
+      const res = await server.getEvents({
+        startLedger,
+        filters: [{ type: "contract", contractIds: [CONTRACT_ADDRESSES.chitChain] }],
+        limit: 50,
+      })
+
+      setEventsLive(true)
+
+      if (res.events?.length) {
+        const decoded: LiveEvent[] = res.events.map((ev: any) => {
+          const topics = ev.topic.map((t: any) => S.scValToNative(t))
+          const eventType = String(topics[0] ?? "event")
+          let data: unknown = null
+          try {
+            data = S.scValToNative(ev.value)
+          } catch {
+            data = null
+          }
+          return {
+            id: ev.id,
+            type: eventType,
+            ledger: ev.ledger,
+            txHash: ev.txHash,
+            timestamp: Date.now(),
+            data,
+          }
+        })
+
+        setEventLog((prev) => {
+          const seen = new Set(prev.map((e) => e.id))
+          const fresh = decoded.filter((e) => !seen.has(e.id))
+          if (fresh.length === 0) return prev
+          return [...fresh.reverse(), ...prev].slice(0, 30)
+        })
+
+        // A new on-chain event means circle state likely changed (member
+        // joined, deposit made, round closed, payout sent, etc.) — refresh
+        // the authoritative read so numbers on screen stay live.
+        if (address) loadCircleState()
+      }
+
+      lastLedgerRef.current = (res.latestLedger ?? startLedger) + 1
+    } catch (e) {
+      // Transient RPC hiccups shouldn't disrupt the UI — just mark the feed
+      // as not live and try again on the next interval tick.
+      setEventsLive(false)
+    } finally {
+      pollingRef.current = false
+    }
+  }, [address, loadCircleState])
+
+  useEffect(() => {
+    if (!CONTRACT_ADDRESSES.chitChain) return
+    pollEvents()
+    const interval = setInterval(pollEvents, EVENT_POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [pollEvents])
+
+  // Ticks once a second purely to re-render the "Xs ago" labels in the
+  // activity feed. Reading Date.now() here (inside an effect callback)
+  // rather than directly in JSX keeps the render function pure.
+  useEffect(() => {
+    setNowTick(Date.now())
+    const clock = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(clock)
+  }, [])
 
   const joinCircle = async () => {
     if (!address || !CONTRACT_ADDRESSES.chitChain) return
@@ -493,6 +597,56 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            {CONTRACT_ADDRESSES.chitChain && (
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-600 to-cyan-600 rounded-3xl blur opacity-10 group-hover:opacity-25 transition duration-500" />
+                <div className="relative bg-[#0d0d1a] border border-white/5 rounded-3xl p-6 backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <div className="w-7 h-7 bg-sky-500/20 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      Live Activity
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${eventsLive ? "bg-emerald-400 animate-pulse" : "bg-zinc-700"}`} />
+                      <span className={`text-[11px] font-semibold ${eventsLive ? "text-emerald-400" : "text-zinc-600"}`}>
+                        {eventsLive ? "Live" : "Connecting…"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {eventLog.length === 0 ? (
+                    <p className="text-xs text-zinc-600 text-center py-4">
+                      Watching the contract for on-chain events — join, deposit, or payout activity will appear here in real time.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {eventLog.map((ev) => (
+                        <div key={ev.id} className="flex items-center gap-3 bg-white/3 rounded-xl p-3">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${eventDotColor(ev.type)}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-zinc-200">{eventLabel(ev.type)}</p>
+                            <a
+                              href={explorerTxUrl(ev.txHash)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-mono text-zinc-600 hover:text-sky-400 transition"
+                            >
+                              {truncateHash(ev.txHash)}
+                            </a>
+                          </div>
+                          <span className="text-[10px] text-zinc-600 shrink-0">{formatRelativeTime(Math.max(nowTick - ev.timestamp, 0))} ago</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {circleTxHash && (txStep === "confirming" || txStep === "success") && (
               <div className="relative">
