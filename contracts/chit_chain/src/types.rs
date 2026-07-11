@@ -155,7 +155,7 @@ pub const MAX_MEMBERS: u32 = 50;
 pub const MIN_ROUNDS: u32 = 1;
 pub const MIN_ROUND_DURATION_LEDGERS: u32 = 17_280; // ~24 hours
 pub const MAX_NAME_LEN: usize = 32;
-pub const CONTRACT_VERSION: u32 = 1;
+pub const CONTRACT_VERSION: u32 = 2;
 
 pub const STORAGE_BUMP_AMOUNT: u32 = 518_400; // ~30 days
 pub const STORAGE_LIFETIME_THRESHOLD: u32 = 432_000; // ~25 days

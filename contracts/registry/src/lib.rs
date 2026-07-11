@@ -1,8 +1,10 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, Address, Env, Symbol, Vec,
+    contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Symbol, Vec,
 };
+
+pub const CONTRACT_VERSION: u32 = 2;
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,6 +21,7 @@ pub enum DataKey {
     CircleCount,
     CircleEntry(Address),
     CircleList,
+    ContractVersion,
 }
 
 #[contracterror]
@@ -50,6 +53,9 @@ impl RegistryContract {
         env.storage()
             .instance()
             .set(&DataKey::CircleList, &Vec::<Address>::new(&env));
+        env.storage()
+            .instance()
+            .set(&DataKey::ContractVersion, &CONTRACT_VERSION);
 
         Ok(())
     }
@@ -102,14 +108,22 @@ impl RegistryContract {
         Ok(())
     }
 
-    /// Update a circle's status code. In production this should ideally check
-    /// that the caller is the circle contract or its admin; for now we allow
-    /// the stored circle admin to authorize the update.
+    /// Update a circle's status code. Called cross-contract by the circle
+    /// contract itself right after a state transition (e.g. becoming Active
+    /// or Completed). We require auth from `circle` (the calling contract),
+    /// not the stored admin — this call can be triggered by a regular
+    /// member joining or an operator executing a payout, neither of whom
+    /// hold the admin's signature. A contract's own `require_auth()` inside
+    /// a cross-contract invocation it initiated succeeds without a manual
+    /// signature, so this correctly restricts the update to the registered
+    /// circle contract only.
     pub fn update_circle_status(
         env: Env,
         circle: Address,
         status_code: u32,
     ) -> Result<(), RegistryError> {
+        circle.require_auth();
+
         let key = DataKey::CircleEntry(circle.clone());
         let mut entry: CircleEntry = env
             .storage()
@@ -117,7 +131,6 @@ impl RegistryContract {
             .get(&key)
             .ok_or(RegistryError::NotFound)?;
 
-        entry.admin.require_auth();
         entry.status_code = status_code;
 
         env.storage().persistent().set(&key, &entry);
@@ -167,5 +180,34 @@ impl RegistryContract {
             }
         }
         result
+    }
+
+    /// Upgrade the registry's WASM in place, keeping this contract's address
+    /// and all stored circle entries intact. Admin-only.
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), RegistryError> {
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistryError::NotInitialized)?;
+        if stored_admin != admin {
+            return Err(RegistryError::Unauthorized);
+        }
+        admin.require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        env.storage()
+            .instance()
+            .set(&DataKey::ContractVersion, &CONTRACT_VERSION);
+
+        Ok(())
+    }
+
+    /// Current contract version, bumped on every upgrade.
+    pub fn get_version(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey::ContractVersion)
+            .unwrap_or(1)
     }
 }
