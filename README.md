@@ -123,3 +123,6 @@ stellar contract deploy \
 - Send XLM transactions on Stellar testnet
 - Transaction hash with Stellar Explorer link
 - Success/failure feedback
+
+---
+_Deployed via Vercel + GitHub integration (Level 2)._
