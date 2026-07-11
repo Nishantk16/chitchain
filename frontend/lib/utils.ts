@@ -58,3 +58,47 @@ export function truncateHash(hash: string): string {
   if (!hash || hash.length < 16) return hash
   return `${hash.slice(0, 8)}…${hash.slice(-8)}`
 }
+
+// Maps the short symbol topic emitted by the contract's events.rs to a
+// human-readable label for the live activity feed.
+export const EVENT_LABELS: Record<string, string> = {
+  cr8d: "Circle Created",
+  joined: "Member Joined",
+  active: "Circle Activated",
+  deposit: "Deposit Received",
+  rndst: "Round Started",
+  winner: "Winner Selected",
+  payout: "Payout Sent",
+  rndcl: "Round Closed",
+  done: "Circle Completed",
+  exit: "Emergency Exit",
+  opadd: "Operator Added",
+  oprem: "Operator Removed",
+  upg: "Contract Upgraded",
+  reg: "Registered to Registry",
+}
+
+export function eventLabel(topic: string): string {
+  return EVENT_LABELS[topic] ?? topic
+}
+
+export const EVENT_DOT_COLORS: Record<string, string> = {
+  cr8d: "bg-violet-400",
+  joined: "bg-sky-400",
+  active: "bg-emerald-400",
+  deposit: "bg-teal-400",
+  rndst: "bg-indigo-400",
+  winner: "bg-fuchsia-400",
+  payout: "bg-emerald-400",
+  rndcl: "bg-amber-400",
+  done: "bg-sky-400",
+  exit: "bg-rose-400",
+  opadd: "bg-zinc-400",
+  oprem: "bg-zinc-400",
+  upg: "bg-zinc-400",
+  reg: "bg-violet-400",
+}
+
+export function eventDotColor(topic: string): string {
+  return EVENT_DOT_COLORS[topic] ?? "bg-zinc-400"
+}
