@@ -349,6 +349,19 @@ impl ChitChainContract {
         Ok(())
     }
 
+    /// Point this circle at a different registry contract. Admin-only.
+    /// Needed because the registry has no upgrade path from its original
+    /// deployment — fixing a registry bug means deploying a new registry
+    /// instance, and existing circles must be repointed at it via this call
+    /// (paired with `upgrade()` to install the code that adds this function).
+    pub fn set_registry_contract(env: Env, admin: Address, registry: Address) -> Result<(), ChitError> {
+        access::require_admin(&env, &admin)?;
+        let mut state = storage::get_circle_state(&env)?;
+        state.registry_contract = registry;
+        storage::set_circle_state(&env, &state);
+        Ok(())
+    }
+
     pub fn upgrade(
         env: Env,
         admin: Address,
