@@ -10,7 +10,7 @@ use crate::{
     RegistryContract, RegistryContractClient,
 };
 
-fn deploy_registry(env: &Env, admin: &Address) -> RegistryContractClient {
+fn deploy_registry<'a>(env: &'a Env, admin: &Address) -> RegistryContractClient<'a> {
     let id = env.register_contract(None, RegistryContract);
     let client = RegistryContractClient::new(env, &id);
     client.initialize(admin);
