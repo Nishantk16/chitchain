@@ -211,3 +211,9 @@ impl RegistryContract {
             .unwrap_or(1)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[path = "../../tests/registry_integration_test.rs"]
+    mod registry_integration_test;
+}
