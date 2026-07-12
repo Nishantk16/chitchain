@@ -4,8 +4,9 @@ use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, Ledger},
     token::{Client as TokenClient, StellarAssetClient},
-    Address, Env, Vec,
+    Address, Env,
 };
+use std::vec::Vec;
 
 use crate::{
     ChitChainContract, ChitChainContractClient,
