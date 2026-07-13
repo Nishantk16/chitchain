@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Horizon } from "@stellar/stellar-sdk"
+import type { xdr } from "@stellar/stellar-sdk"
 import { StellarWalletsKit, Networks } from "@creit.tech/stellar-wallets-kit"
 import { FreighterModule, FREIGHTER_ID } from "@creit.tech/stellar-wallets-kit/modules/freighter"
 import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull"
@@ -32,8 +33,9 @@ interface AppError {
   message: string
 }
 
-function classifyError(e: any): AppError {
-  const raw = (e?.message || String(e) || "").toLowerCase()
+function classifyError(e: unknown): AppError {
+  const err = e as { message?: string } | null | undefined
+  const raw = (err?.message || String(e) || "").toLowerCase()
 
   if (
     raw.includes("no wallet") ||
@@ -55,7 +57,7 @@ function classifyError(e: any): AppError {
 
   return {
     kind: "contract_error",
-    message: e?.message || "The contract call failed. This can happen if you're already a member, the circle is full, or your account doesn't have enough XLM to cover the fee.",
+    message: err?.message || "The contract call failed. This can happen if you're already a member, the circle is full, or your account doesn't have enough XLM to cover the fee.",
   }
 }
 
@@ -144,7 +146,7 @@ export default function Home() {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
     let animId: number
-    let pts = [...particles]
+    const pts = [...particles]
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -180,7 +182,7 @@ export default function Home() {
     try {
       const { address: addr } = await StellarWalletsKit.authModal()
       setAddress(addr)
-    } catch (e: any) {
+    } catch (e) {
       setAppError(classifyError(e))
     }
   }
@@ -193,8 +195,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!address) return
-    horizon.loadAccount(address).then((acc: any) => {
-      const xlm = acc.balances.find((b: any) => b.asset_type === "native")
+    horizon.loadAccount(address).then((acc: { balances: Array<{ asset_type: string; balance: string }> }) => {
+      const xlm = acc.balances.find((b) => b.asset_type === "native")
       setBalance(xlm ? parseFloat(xlm.balance).toFixed(2) : "0.00")
     }).catch(() => setBalance("0.00"))
   }, [address])
@@ -211,7 +213,7 @@ export default function Home() {
       const { signedTxXdr } = await StellarWalletsKit.signTransaction(tx.toXDR(), { networkPassphrase: S.Networks.TESTNET, address })
       const result = await horizon.submitTransaction(S.TransactionBuilder.fromXDR(signedTxXdr, S.Networks.TESTNET))
       setTxHash(result.hash)
-    } catch (e: any) {
+    } catch (e) {
       const classified = classifyError(e)
       setTxError(classified.message)
     }
@@ -240,14 +242,23 @@ export default function Home() {
         setCircleState(null)
         return
       }
-      const native: any = S.scValToNative(sim.result.retval)
+      interface RawCircleState {
+        status: unknown
+        member_count?: number
+        current_round?: number
+        total_pool?: string | number
+        config?: { max_members?: number; total_rounds?: number; name?: string }
+      }
+      const native = S.scValToNative(sim.result.retval) as RawCircleState | null
       if (!native) { setCircleState(null); return }
 
       const rawStatus = native.status
       let statusTag: string | undefined
       if (Array.isArray(rawStatus)) statusTag = rawStatus[0]
-      else if (rawStatus?.tag) statusTag = rawStatus.tag
       else if (typeof rawStatus === "string") statusTag = rawStatus
+      else if (rawStatus && typeof rawStatus === "object" && "tag" in rawStatus) {
+        statusTag = (rawStatus as { tag?: string }).tag
+      }
 
       setCircleState({
         status: statusTag !== undefined ? statusTagToCode(statusTag) : 0,
@@ -258,7 +269,7 @@ export default function Home() {
         total_pool: String(native.total_pool ?? "0"),
         name: native.config?.name ?? "",
       })
-    } catch (e: any) {
+    } catch (e) {
       setAppError(classifyError(e))
       setCircleState(null)
     } finally {
@@ -302,8 +313,15 @@ export default function Home() {
       setEventsLive(true)
 
       if (res.events?.length) {
-        const decoded: LiveEvent[] = res.events.map((ev: any) => {
-          const topics = ev.topic.map((t: any) => S.scValToNative(t))
+        interface RawContractEvent {
+          id: string
+          ledger: number
+          txHash: string
+          topic: xdr.ScVal[]
+          value: xdr.ScVal
+        }
+        const decoded: LiveEvent[] = (res.events as RawContractEvent[]).map((ev) => {
+          const topics = ev.topic.map((t) => S.scValToNative(t))
           const eventType = String(topics[0] ?? "event")
           let data: unknown = null
           try {
@@ -335,7 +353,7 @@ export default function Home() {
       }
 
       lastLedgerRef.current = (res.latestLedger ?? startLedger) + 1
-    } catch (e) {
+    } catch {
       // Transient RPC hiccups shouldn't disrupt the UI — just mark the feed
       // as not live and try again on the next interval tick.
       setEventsLive(false)
@@ -410,7 +428,7 @@ export default function Home() {
       } else {
         throw new Error(`Transaction ${getResult.status.toLowerCase()}. It may have already been processed, or the circle may be full.`)
       }
-    } catch (e: any) {
+    } catch (e) {
       setTxStep("failed")
       setAppError(classifyError(e))
     }
