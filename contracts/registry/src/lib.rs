@@ -214,6 +214,7 @@ impl RegistryContract {
 
 #[cfg(test)]
 mod tests {
-    #[path = "../../tests/registry_integration_test.rs"]
-    mod registry_integration_test;
+    mod registry_integration_test {
+        include!("../tests/registry_integration_test.rs");
+    }
 }

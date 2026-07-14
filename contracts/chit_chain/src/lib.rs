@@ -398,10 +398,13 @@ impl ChitChainContract {
 
 #[cfg(test)]
 mod tests {
-    #[path = "../../tests/access_control_test.rs"]
-    mod access_control_test;
-    #[path = "../../tests/deposit_payout_test.rs"]
-    mod deposit_payout_test;
-    #[path = "../../tests/circle_lifecycle_test.rs"]
-    mod circle_lifecycle_test;
+    mod access_control_test {
+        include!("../tests/access_control_test.rs");
+    }
+    mod deposit_payout_test {
+        include!("../tests/deposit_payout_test.rs");
+    }
+    mod circle_lifecycle_test {
+        include!("../tests/circle_lifecycle_test.rs");
+    }
 }
