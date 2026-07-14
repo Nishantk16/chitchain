@@ -30,17 +30,19 @@ jobs:
             ${{ runner.os }}-cargo-
 
       # Runs both contracts' unit/integration test suites (wired into each
-      # lib crate via the inline `mod tests { #[path] ... }` blocks).
+      # lib crate via inline `mod tests { ... include!(...) }` blocks).
       - name: Run contract tests
         run: cargo test --workspace
 
-      - name: Install Stellar CLI
-        run: cargo install --locked stellar-cli --version ^25
-
       # Compiles both contracts to release wasm the same way a real deploy
       # would, so a build-breaking change fails CI before it reaches testnet.
+      # (Using `cargo build` directly rather than `stellar contract build` --
+      # the stellar-cli install pulls in ethnum 1.5.2, which fails to
+      # compile on current stable rustc due to an unrelated upstream
+      # transmute-size bug. cargo build produces the identical wasm output
+      # without needing the CLI tool.)
       - name: Build contract wasm
-        run: stellar contract build
+        run: cargo build --release --target wasm32v1-none --workspace
 
       - name: Upload wasm artifacts
         uses: actions/upload-artifact@v4
