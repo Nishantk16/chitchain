@@ -9,6 +9,7 @@ import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo"
 import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr"
 import { CONTRACT_ADDRESSES, STELLAR_CONFIG, EVENT_POLL_INTERVAL_MS, explorerTxUrl } from "@/lib/stellar-config"
 import { statusCodeToLabel, statusCodeToColor, formatXLM, eventLabel, eventDotColor, formatRelativeTime, truncateHash } from "@/lib/utils"
+import { classifyError, type AppError } from "@/lib/errors"
 
 const horizon = new Horizon.Server(STELLAR_CONFIG.horizonUrl)
 
@@ -25,41 +26,7 @@ function ensureKitInit() {
 
 // ── Error categories ────────────────────────────────────────────────────────
 // We surface exactly 3 distinct, user-actionable error types, each with its
-// own message + icon, rather than one generic catch-all.
-type AppErrorKind = "wallet_not_found" | "user_rejected" | "contract_error"
-
-interface AppError {
-  kind: AppErrorKind
-  message: string
-}
-
-function classifyError(e: unknown): AppError {
-  const err = e as { message?: string } | null | undefined
-  const raw = (err?.message || String(e) || "").toLowerCase()
-
-  if (
-    raw.includes("no wallet") ||
-    raw.includes("not installed") ||
-    raw.includes("not available") ||
-    raw.includes("please install")
-  ) {
-    return { kind: "wallet_not_found", message: "No compatible wallet was found. Please install Freighter, xBull, Albedo, or another supported Stellar wallet." }
-  }
-
-  if (
-    raw.includes("reject") ||
-    raw.includes("declin") ||
-    raw.includes("cancel") ||
-    raw.includes("user denied")
-  ) {
-    return { kind: "user_rejected", message: "The request was rejected in your wallet. No transaction was sent." }
-  }
-
-  return {
-    kind: "contract_error",
-    message: err?.message || "The contract call failed. This can happen if you're already a member, the circle is full, or your account doesn't have enough XLM to cover the fee.",
-  }
-}
+// own message + icon, rather than one generic catch-all. See lib/errors.ts.
 
 // ── Transaction status stepper ──────────────────────────────────────────────
 type TxStep = "idle" | "building" | "simulating" | "signing" | "submitting" | "confirming" | "success" | "failed"

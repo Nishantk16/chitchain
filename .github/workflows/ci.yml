@@ -51,7 +51,7 @@ jobs:
           path: target/wasm32v1-none/release/*.wasm
 
   frontend:
-    name: Frontend (lint + typecheck + build)
+    name: Frontend (lint + test + typecheck + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -71,6 +71,9 @@ jobs:
 
       - name: Lint
         run: npm run lint --if-present
+
+      - name: Unit tests
+        run: npm test
 
       - name: Type check
         run: npx tsc --noEmit
