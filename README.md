@@ -47,7 +47,7 @@ cd frontend && npm test
 
 Both suites run automatically in CI on every push — see the badge at the top of this file or the [Actions tab](https://github.com/Nishantk16/chitchain/actions).
 
-## 🟡 Level 2 — Yellow Belt (Rise In)
+## 🟡 Level 2 — Yellow Belt 
 
 This submission adds multi-wallet integration, real smart contract deployment, and live contract calls with full transaction status tracking on top of the White Belt (Level 1) foundation.
 
