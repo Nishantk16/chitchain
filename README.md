@@ -4,7 +4,7 @@
 
 > The world's first trustless group savings protocol (ROSCA) built on Stellar/Soroban.
 
-## 🟠 Level 3 — Orange Belt (Rise In)
+## 🟠 Level 3 — Orange Belt 
 
 This submission moves ChitChain from a Level 2 demo to a production-shaped dApp: real cross-contract calls between `chit_chain` and `registry`, live on-chain event streaming, an automated CI/CD pipeline, mobile-responsive UI, and a real test suite for both the contracts and the frontend.
 
