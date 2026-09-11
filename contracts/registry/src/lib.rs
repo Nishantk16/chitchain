@@ -5,6 +5,7 @@ use soroban_sdk::{
 };
 
 pub const CONTRACT_VERSION: u32 = 2;
+pub const MAX_CIRCLES: u32 = 10_000;
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,6 +34,7 @@ pub enum RegistryError {
     AlreadyRegistered = 3,
     NotFound = 4,
     Unauthorized = 5,
+    RegistryFull = 6,
 }
 
 #[contract]
@@ -72,6 +74,11 @@ impl RegistryContract {
 
         if !env.storage().instance().has(&DataKey::Admin) {
             return Err(RegistryError::NotInitialized);
+        }
+
+        let count: u32 = env.storage().instance().get(&DataKey::CircleCount).unwrap_or(0);
+        if count >= MAX_CIRCLES {
+            return Err(RegistryError::RegistryFull);
         }
 
         let key = DataKey::CircleEntry(circle.clone());
