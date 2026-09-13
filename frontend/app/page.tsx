@@ -33,6 +33,32 @@ interface AppError {
   message: string
 }
 
+const CONTRACT_ERROR_MESSAGES: Record<number, string> = {
+  100: "You're not authorized to perform this action.",
+  101: "You're not a member of this circle.",
+  102: "You're already a member of this circle.",
+  103: "This action isn't allowed for your role in the circle.",
+  200: "This circle is in an invalid state for that action.",
+  201: "This circle isn't active yet.",
+  202: "This circle has already started and is no longer accepting new members.",
+  203: "This circle has already completed all its rounds.",
+  204: "This circle has been cancelled.",
+  300: "This round isn't ready yet.",
+  301: "You've already paid for this round.",
+  302: "This round is still open — it hasn't closed for payout yet.",
+  303: "All rounds in this circle are already complete.",
+  400: "The contribution amount isn't valid for this circle.",
+  401: "The number of members isn't valid for this circle.",
+  402: "The round duration isn't valid for this circle.",
+  403: "This circle is full and isn't accepting new members.",
+  404: "The circle name is too long.",
+  500: "Insufficient funds to complete this action.",
+  501: "The payout failed to process.",
+  502: "The payout pool isn't ready yet.",
+  600: "A call to the registry contract failed.",
+  601: "This circle is already registered.",
+}
+
 function classifyError(e: unknown): AppError {
   const err = e as { message?: string } | null | undefined
   const raw = (err?.message || String(e) || "").toLowerCase()
@@ -53,6 +79,15 @@ function classifyError(e: unknown): AppError {
     raw.includes("user denied")
   ) {
     return { kind: "user_rejected", message: "The request was rejected in your wallet. No transaction was sent." }
+  }
+
+  const codeMatch = raw.match(/error\(contract,\s*#(\d+)\)/i) || raw.match(/contracterror.*?\((\d+)\)/i)
+  if (codeMatch) {
+    const code = parseInt(codeMatch[1], 10)
+    const knownMessage = CONTRACT_ERROR_MESSAGES[code]
+    if (knownMessage) {
+      return { kind: "contract_error", message: knownMessage }
+    }
   }
 
   return {
@@ -594,7 +629,7 @@ export default function Home() {
 
                     <button
                       onClick={joinCircle}
-                      disabled={txStep !== "idle" && txStep !== "success" && txStep !== "failed"}
+                      disabled={circleState.status !== 0 || (txStep !== "idle" && txStep !== "success" && txStep !== "failed")}
                       className="relative w-full overflow-hidden bg-gradient-to-r from-fuchsia-600 to-violet-600 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-zinc-600 text-white font-bold py-4 rounded-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-fuchsia-500/20 mt-2"
                     >
                       {txStep !== "idle" && txStep !== "success" && txStep !== "failed" ? (
@@ -605,7 +640,7 @@ export default function Home() {
                           </svg>
                           {STEP_LABELS[txStep]}
                         </span>
-                      ) : "Join Circle"}
+                      ) : circleState.status !== 0 ? "Circle Not Accepting Members" : "Join Circle"}
                     </button>
                   </div>
                 ) : (
