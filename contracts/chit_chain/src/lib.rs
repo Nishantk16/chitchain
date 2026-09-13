@@ -254,20 +254,23 @@ impl ChitChainContract {
             storage::get_round(&env, state.current_round).ok_or(ChitError::RoundNotReady)?;
         let winner = round.winner.clone().ok_or(ChitError::RoundNotReady)?;
 
-        let token_client = soroban_sdk::token::Client::new(&env, &state.config.token_address);
-        token_client.transfer(&env.current_contract_address(), &winner, &round.pool_amount);
-
+        // EFFECTS FIRST (checks-effects-interactions): update all internal
+        // state before making the external token transfer call below.
         let mut winner_data = storage::get_member(&env, &winner).ok_or(ChitError::NotMember)?;
         winner_data.has_received_payout = true;
         storage::set_member(&env, &winner, &winner_data);
-
-        events::emit_payout(&env, &winner, round.pool_amount, round.round_number);
 
         state.total_pool -= round.pool_amount;
         storage::set_circle_state(&env, &state);
 
         round.payout_tx_hash = Some(soroban_sdk::symbol_short!("paid"));
         storage::set_round(&env, &round);
+
+        // INTERACTION LAST: external call happens only after all state is committed.
+        let token_client = soroban_sdk::token::Client::new(&env, &state.config.token_address);
+        token_client.transfer(&env.current_contract_address(), &winner, &round.pool_amount);
+
+        events::emit_payout(&env, &winner, round.pool_amount, round.round_number);
 
         if state.current_round >= state.config.total_rounds {
             state::transition_to_completed(&env)?;
