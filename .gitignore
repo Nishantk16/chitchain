@@ -36,3 +36,6 @@ coverage/
 .nyc_output/
 .vercel
 .env*
+*.backup
+test_output.txt
+test_snapshots/
