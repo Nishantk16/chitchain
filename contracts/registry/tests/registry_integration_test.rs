@@ -63,6 +63,38 @@ fn test_update_circle_status() {
     assert_eq!(client.get_circle(&circle).unwrap().status_code, 3);
 }
 
+/// Guards against the update_circle_status() authorization bug:
+/// this test fails if require_auth() is ever moved back onto
+/// `entry.admin` instead of `circle`. mock_all_auths() alone would
+/// let a wrong require_auth() pass silently, so we explicitly check
+/// WHICH address Soroban recorded as having authorized the call.
+#[test]
+fn test_update_circle_status_requires_circle_auth_not_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+
+    let client = deploy_registry(&env, &admin);
+
+    let circle = Address::generate(&env);
+    client.register_circle(&circle, &symbol_short!("C1"), &admin);
+
+    client.update_circle_status(&circle, &1u32);
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1, "expected exactly one require_auth() call");
+
+    let (authorized_address, _invocation) = &auths[0];
+    assert_eq!(
+        authorized_address, &circle,
+        "update_circle_status() must be authorized by the circle address, not by entry.admin"
+    );
+    assert_ne!(
+        authorized_address, &admin,
+        "regression check: entry.admin must NOT be the authorizing party"
+    );
+}
+
 #[test]
 fn test_filter_circles_by_status() {
     let env = Env::default();
